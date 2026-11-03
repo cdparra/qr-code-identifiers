@@ -7,6 +7,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 import io
 import math
+import argparse
 import pandas as pd
 import os
 
@@ -227,16 +228,77 @@ def generate_exam_kits(usar_csv=True, csv_path="era_nna_exams_2026_consolidado.c
     print(f"PDF generado exitosamente en: {filename}")
 
 # ==========================================
-# EJECUCIÓN
+# EJECUCIÓN POR TERMINAL
 # ==========================================
 
-# MODO 1: Leer desde el CSV y autocompletar (Generar 10 como prueba)
-generate_exam_kits(
-    usar_csv=True, 
-    csv_path="era_nna_exams_2026_consolidado.csv", 
-    cantidad=10, 
-    output_prefix="kits_desde_csv"
-)
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Genera kits de examen con códigos QR e identificación de estudiantes."
+    )
 
-# MODO 2: Generar tarjetas vacías empezando desde el código 200000
-# generate_exam_kits(usar_csv=False, cantidad=10, id_inicial=200000, output_prefix="kits_vacios")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
+        "--csv",
+        action="store_true",
+        help="Leer los datos desde un CSV (modo predeterminado)."
+    )
+    mode.add_argument(
+        "--sin-csv",
+        action="store_true",
+        help="Generar tarjetas vacías sin datos de estudiantes."
+    )
+
+    parser.add_argument(
+        "--csv-path",
+        default="era_nna_exams_2026_consolidado.csv",
+        help="Ruta del archivo CSV."
+    )
+    parser.add_argument(
+        "--cantidad",
+        type=int,
+        default=10,
+        help="Cantidad de kits a generar (predeterminada: 10)."
+    )
+    parser.add_argument(
+        "--id-inicial",
+        type=int,
+        default=100000,
+        help="Primer identificador para tarjetas sin CSV (predeterminado: 100000)."
+    )
+    parser.add_argument(
+        "--output-prefix",
+        default="kits_desde_csv",
+        help="Nombre base del PDF generado."
+    )
+
+    args = parser.parse_args()
+    if args.cantidad < 1:
+        parser.error("--cantidad debe ser mayor que cero")
+    return args
+
+
+if __name__ == "__main__":
+    args = parse_args()
+
+    if args.sin_csv:
+        generate_exam_kits(
+            usar_csv=False,
+            cantidad=args.cantidad,
+            id_inicial=args.id_inicial,
+            output_prefix=args.output_prefix
+        )
+    else:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        csv_path = args.csv_path
+        if not os.path.isabs(csv_path):
+            script_csv_path = os.path.join(script_dir, csv_path)
+            if os.path.isfile(script_csv_path):
+                csv_path = script_csv_path
+
+        generate_exam_kits(
+            usar_csv=True,
+            csv_path=csv_path,
+            cantidad=args.cantidad,
+            id_inicial=args.id_inicial,
+            output_prefix=args.output_prefix
+        )

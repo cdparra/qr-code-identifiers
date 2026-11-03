@@ -1,6 +1,6 @@
 import qrcode
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
+from reportlab.lib.pagesizes import A4, letter
 from reportlab.lib.units import inch
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase import pdfmetrics
@@ -106,12 +106,20 @@ def generate_exam_kits(usar_csv=True, csv_path="era_nna_exams_2026_consolidado.c
         return ImageReader(img_buffer)
 
     filename = f"{output_prefix}.pdf"
-    c = canvas.Canvas(filename, pagesize=letter)
+    c = canvas.Canvas(filename, pagesize=A4)
 
-    regular_font = r"C:\Windows\Fonts\arial.ttf"
-    bold_font = r"C:\Windows\Fonts\arialbd.ttf"
-    pdfmetrics.registerFont(TTFont("ArialUnicode", regular_font))
-    pdfmetrics.registerFont(TTFont("ArialUnicode-Bold", bold_font))
+    font_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
+    regular_font = os.path.join(font_dir, "NotoSans-Regular.ttf")
+    bold_font = os.path.join(font_dir, "NotoSans-Bold.ttf")
+
+    if not os.path.isfile(regular_font) or not os.path.isfile(bold_font):
+        raise FileNotFoundError(
+            "No se encontraron las fuentes Noto Sans. Mantenga la carpeta 'fonts' "
+            "junto al archivo qr-generator-era-exams-test.py."
+        )
+
+    pdfmetrics.registerFont(TTFont("NotoSans", regular_font))
+    pdfmetrics.registerFont(TTFont("NotoSans-Bold", bold_font))
     
     for i in range(total_students):
         student_data = students[i]
@@ -143,7 +151,7 @@ def generate_exam_kits(usar_csv=True, csv_path="era_nna_exams_2026_consolidado.c
             qr_x = x + idx * w_qr
             
             # Encabezados (Ej. "PRE" y luego "COM")
-            c.setFont("ArialUnicode-Bold", 7)
+            c.setFont("NotoSans-Bold", 7)
             c.drawCentredString(qr_x + w_qr/2, y + block_height - 0.2 * inch, fase)
             c.drawCentredString(qr_x + w_qr/2, y + block_height - 0.35 * inch, materia)
             
@@ -154,7 +162,7 @@ def generate_exam_kits(usar_csv=True, csv_path="era_nna_exams_2026_consolidado.c
             c.drawImage(qr_img, qr_x + (w_qr - qr_size)/2, y + (block_height - qr_size)/2, width=qr_size, height=qr_size)
             
             # Pie (Código base y sufijo)
-            c.setFont("ArialUnicode", 5)
+            c.setFont("NotoSans", 5)
             c.drawCentredString(qr_x + w_qr/2, y + 0.3 * inch, f"EXAM-{student_id}")
             c.drawCentredString(qr_x + w_qr/2, y + 0.15 * inch, sufijo)
 
@@ -164,7 +172,7 @@ def generate_exam_kits(usar_csv=True, csv_path="era_nna_exams_2026_consolidado.c
         line_spacing = 0.28 * inch
 
         for label_text, data_key in fields_to_draw:
-            c.setFont("ArialUnicode-Bold", 7)
+            c.setFont("NotoSans-Bold", 7)
             
             # Caso especial para "F  M" sin etiqueta de "Sexo:"
             if label_text == "F   M":
@@ -182,12 +190,12 @@ def generate_exam_kits(usar_csv=True, csv_path="era_nna_exams_2026_consolidado.c
                         c.circle(m_x + 3.0, y_offset + 2.5, 6) # Círculo sobre la M
             else:
                 c.drawString(card_x + 0.05 * inch, y_offset, label_text)
-                label_w = c.stringWidth(label_text, "ArialUnicode-Bold", 7)
+                label_w = c.stringWidth(label_text, "NotoSans-Bold", 7)
                 val_x = card_x + 0.05 * inch + label_w + 3
                 
                 # Si hay datos en CSV, imprimirlos
                 if student_data and data_key in student_data and student_data[data_key]:
-                    c.setFont("ArialUnicode", 7)
+                    c.setFont("NotoSans", 7)
                     # Truncamos el texto a 20 caracteres para que no desborde el ancho de la tarjeta
                     text_val = str(student_data[data_key])[:20] 
                     c.drawString(val_x, y_offset, text_val)

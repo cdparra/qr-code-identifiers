@@ -67,13 +67,16 @@ def generate_exam_kits(usar_csv=True, csv_path="era_nna_exams_2026_consolidado.c
     if total_students == 0:
         return
 
-    # Configuración de diseño de hoja (Avery 5163 - 10 etiquetas por hoja)
+    # Configuración de diseño optimizada para A4: 2 columnas × 5 filas
     cols, rows = 2, 5
     students_per_page = cols * rows
-    page_width, page_height = letter
+    page_width, page_height = A4
     block_width = 4.0 * inch
     block_height = 2.0 * inch
-    margin_x, margin_y = 0.25 * inch, 0.5 * inch
+
+    # Centrar horizontal y verticalmente el bloque completo en la página A4.
+    margin_x = (page_width - (cols * block_width)) / 2
+    margin_y = (page_height - (rows * block_height)) / 2
 
     # Configuración de las 5 secciones de la etiqueta
     w_qr = 0.6 * inch      # Ancho para cada uno de los 4 QRs (2.4" total)
@@ -87,7 +90,6 @@ def generate_exam_kits(usar_csv=True, csv_path="era_nna_exams_2026_consolidado.c
     ]
     
     fields_to_draw = [
-        ("Nombre:", "nombre"),
         ("F   M", "sexo"),
         ("Distrito:", "distrito"),
         ("Nro. Esc:", "escuela"),
@@ -169,7 +171,22 @@ def generate_exam_kits(usar_csv=True, csv_path="era_nna_exams_2026_consolidado.c
         # --- SECCIÓN DE LA TARJETA DE IDENTIFICACIÓN ---
         card_x = x + (4 * w_qr)
         y_offset = y + block_height - 0.25 * inch
-        line_spacing = 0.28 * inch
+
+        # Nombre: etiqueta arriba y valor en una fila independiente debajo.
+        c.setFont("NotoSans-Bold", 7)
+        c.drawString(card_x + 0.05 * inch, y_offset, "Nombre:")
+        name_y = y_offset - 0.14 * inch
+        name_x = card_x + 0.05 * inch
+        if student_data and student_data["nombre"]:
+            c.setFont("NotoSans", 6.5)
+            name_text = str(student_data["nombre"])
+            c.drawString(name_x, name_y, name_text[:30])
+        else:
+            c.setLineWidth(0.5)
+            c.line(name_x, name_y - 1, card_x + w_card - 0.05 * inch, name_y - 1)
+
+        y_offset -= 0.38 * inch
+        line_spacing = 0.235 * inch
 
         for label_text, data_key in fields_to_draw:
             c.setFont("NotoSans-Bold", 7)

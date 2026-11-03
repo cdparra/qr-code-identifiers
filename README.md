@@ -30,6 +30,14 @@ python qr-generator-era-exams-test.py --csv-path "data\estudiantes.csv" --cantid
 python qr-generator-era-exams-test.py --sin-csv --cantidad 10 --id-inicial 200000 --output-prefix kits_vacios
 ```
 
+### Choose the page orientation
+
+Portrait uses a dynamically calculated 2-column grid. Landscape adds a column and uses a 3-column by 4-row grid for A4 by sizing the cards to the available page area. A4 and Letter dimensions are both supported.
+
+```powershell
+python qr-generator-era-exams-test.py --sin-csv --cantidad 20 --orientacion landscape --tamano-pagina A4 --output-prefix kits_horizontales
+```
+
 ### Available options
 
 | Option | Description | Default |
@@ -40,6 +48,8 @@ python qr-generator-era-exams-test.py --sin-csv --cantidad 10 --id-inicial 20000
 | `--cantidad` | Number of cards or kits | `10` |
 | `--id-inicial` | First generated ID for blank cards | `100000` |
 | `--output-prefix` | PDF output filename without `.pdf` | `kits_desde_csv` |
+| `--orientacion`, `--orientation` | Page orientation: `portrait` or `landscape` | `portrait` |
+| `--tamano-pagina`, `--page-size` | Page format: `A4` or `letter` | `A4` |
 
 Show the built-in help at any time:
 

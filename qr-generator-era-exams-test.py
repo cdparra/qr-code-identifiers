@@ -1,6 +1,6 @@
 import qrcode
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import A4, letter
+from reportlab.lib.pagesizes import A4, landscape, letter
 from reportlab.lib.units import inch
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase import pdfmetrics
@@ -53,7 +53,58 @@ def load_students_from_csv(csv_path, limit):
         })
     return students
 
-def generate_exam_kits(usar_csv=True, csv_path="era_nna_exams_2026_consolidado.csv", cantidad=10, id_inicial=100000, output_prefix="exam_kits"):
+def get_page_layout(orientacion="portrait", tamano_pagina="A4"):
+    """Calcula dinámicamente la cuadrícula según orientación y tamaño de hoja."""
+    orientacion = orientacion.lower()
+    tamano_pagina = tamano_pagina.upper()
+
+    formatos = {"A4": A4, "LETTER": letter}
+    if tamano_pagina not in formatos:
+        raise ValueError("El tamaño de página debe ser 'A4' o 'Letter'.")
+
+    base_width, base_height = formatos[tamano_pagina]
+    if orientacion in ("portrait", "retrato"):
+        page_size = (base_width, base_height)
+    elif orientacion in ("landscape", "horizontal"):
+        page_size = landscape(formatos[tamano_pagina])
+    else:
+        raise ValueError("La orientación debe ser 'portrait' o 'landscape'.")
+
+    page_width, page_height = page_size
+    margin = 12
+    minimum_card_width = 3.0 * inch
+    preferred_card_width = 4.0 * inch
+    preferred_card_height = 2.0 * inch
+    minimum_card_height = 1.75 * inch
+
+    max_cols = max(1, int((page_width - 2 * margin) // minimum_card_width))
+    row_minimum = minimum_card_height if orientacion in ("landscape", "horizontal") else preferred_card_height
+    max_rows = max(1, int((page_height - 2 * margin) // row_minimum))
+
+    best_layout = None
+    best_capacity = 0
+    for cols in range(1, max_cols + 1):
+        for rows in range(1, max_rows + 1):
+            block_width = min(preferred_card_width, (page_width - 2 * margin) / cols)
+            block_height = min(preferred_card_height, (page_height - 2 * margin) / rows)
+            if block_width < minimum_card_width or block_height < minimum_card_height:
+                continue
+
+            capacity = cols * rows
+            if capacity > best_capacity:
+                best_capacity = capacity
+                best_layout = (cols, rows, block_width, block_height)
+
+    if best_layout is None:
+        return page_size, 1, 1, preferred_card_width, preferred_card_height
+
+    cols, rows, block_width, block_height = best_layout
+    return page_size, cols, rows, block_width, block_height
+
+
+def generate_exam_kits(usar_csv=True, csv_path="era_nna_exams_2026_consolidado.csv", cantidad=10,
+                       id_inicial=100000, output_prefix="exam_kits", orientacion="portrait",
+                       tamano_pagina="A4"):
     
     # 1. Obtener los datos (del CSV o generar vacíos)
     if usar_csv:
@@ -68,20 +119,18 @@ def generate_exam_kits(usar_csv=True, csv_path="era_nna_exams_2026_consolidado.c
     if total_students == 0:
         return
 
-    # Configuración de diseño optimizada para A4: 2 columnas × 5 filas
-    cols, rows = 2, 5
+    # Configuración de diseño optimizada para cada orientación A4.
+    page_size, cols, rows, block_width, block_height = get_page_layout(orientacion, tamano_pagina)
     students_per_page = cols * rows
-    page_width, page_height = A4
-    block_width = 4.0 * inch
-    block_height = 2.0 * inch
+    page_width, page_height = page_size
 
     # Centrar horizontal y verticalmente el bloque completo en la página A4.
     margin_x = (page_width - (cols * block_width)) / 2
     margin_y = (page_height - (rows * block_height)) / 2
 
     # Configuración de las 5 secciones de la etiqueta
-    w_qr = 0.6 * inch      # Ancho para cada uno de los 4 QRs (2.4" total)
-    w_card = 1.6 * inch    # Ancho restante para la tarjeta de ID (1.6" total)
+    w_qr = block_width * 0.15  # 15% para cada uno de los 4 QRs
+    w_card = block_width * 0.40  # 40% para la tarjeta de identificación
     
     qr_configs = [
         ("PRE", "COM", "-PRE-COM"),
@@ -109,7 +158,7 @@ def generate_exam_kits(usar_csv=True, csv_path="era_nna_exams_2026_consolidado.c
         return ImageReader(img_buffer)
 
     filename = f"{output_prefix}.pdf"
-    c = canvas.Canvas(filename, pagesize=A4)
+    c = canvas.Canvas(filename, pagesize=page_size)
 
     font_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
     regular_font = os.path.join(font_dir, "NotoSans-Regular.ttf")
@@ -270,6 +319,20 @@ def parse_args():
         default="kits_desde_csv",
         help="Nombre base del PDF generado."
     )
+    parser.add_argument(
+        "--orientacion", "--orientation",
+        dest="orientacion",
+        choices=("portrait", "landscape"),
+        default="portrait",
+        help="Orientación de la página: portrait o landscape (predeterminada: portrait)."
+    )
+    parser.add_argument(
+        "--tamano-pagina", "--page-size",
+        dest="tamano_pagina",
+        choices=("A4", "letter"),
+        default="A4",
+        help="Tamaño de la hoja: A4 o Letter (predeterminado: A4)."
+    )
 
     args = parser.parse_args()
     if args.cantidad < 1:
@@ -285,7 +348,9 @@ if __name__ == "__main__":
             usar_csv=False,
             cantidad=args.cantidad,
             id_inicial=args.id_inicial,
-            output_prefix=args.output_prefix
+            output_prefix=args.output_prefix,
+            orientacion=args.orientacion,
+            tamano_pagina=args.tamano_pagina
         )
     else:
         script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -300,5 +365,7 @@ if __name__ == "__main__":
             csv_path=csv_path,
             cantidad=args.cantidad,
             id_inicial=args.id_inicial,
-            output_prefix=args.output_prefix
+            output_prefix=args.output_prefix,
+            orientacion=args.orientacion,
+            tamano_pagina=args.tamano_pagina
         )

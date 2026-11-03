@@ -32,7 +32,7 @@ python qr-generator-era-exams-test.py --sin-csv --cantidad 10 --id-inicial 20000
 
 ### Choose the page orientation
 
-Portrait uses a dynamically calculated 2-column grid. Landscape adds a column and uses a 3-column by 4-row grid for A4 by sizing the cards to the available page area. A4 and Letter dimensions are both supported.
+Portrait and landscape dynamically calculate the number of cards that fit each page. Changing the page format does not resize the cards; their current dimensions are preserved for each orientation. Supported formats are A0, A1, A2, A3, A4, A5, A6 and Letter.
 
 ```powershell
 python qr-generator-era-exams-test.py --sin-csv --cantidad 20 --orientacion landscape --tamano-pagina A4 --output-prefix kits_horizontales
@@ -59,7 +59,7 @@ The files are named `kits_separados_1_de_3.pdf`, `kits_separados_2_de_3.pdf`, an
 | `--id-inicial` | First generated ID for blank cards | `100000` |
 | `--output-prefix` | PDF output filename without `.pdf` | `kits_desde_csv` |
 | `--orientacion`, `--orientation` | Page orientation: `portrait` or `landscape` | `portrait` |
-| `--tamano-pagina`, `--page-size` | Page format: `A4` or `letter` | `A4` |
+| `--tamano-pagina`, `--page-size` | Page format: `A0`, `A1`, `A2`, `A3`, `A4`, `A5`, `A6` or `letter` | `A4` |
 | `--cantidad-archivos`, `--file-count` | Number of PDF files that receive the total cards | `1` |
 
 Show the built-in help at any time:

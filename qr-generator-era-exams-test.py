@@ -1,6 +1,6 @@
 import qrcode
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import A4, landscape, letter
+from reportlab.lib.pagesizes import A0, A1, A2, A3, A4, A5, A6, landscape, letter
 from reportlab.lib.units import inch
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase import pdfmetrics
@@ -60,9 +60,12 @@ def get_page_layout(orientacion="portrait", tamano_pagina="A4"):
     orientacion = orientacion.lower()
     tamano_pagina = tamano_pagina.upper()
 
-    formatos = {"A4": A4, "LETTER": letter}
+    formatos = {
+        "A0": A0, "A1": A1, "A2": A2, "A3": A3, "A4": A4,
+        "A5": A5, "A6": A6, "LETTER": letter
+    }
     if tamano_pagina not in formatos:
-        raise ValueError("El tamaño de página debe ser 'A4' o 'Letter'.")
+        raise ValueError("El tamaño de página no es compatible.")
 
     base_width, base_height = formatos[tamano_pagina]
     if orientacion in ("portrait", "retrato"):
@@ -74,34 +77,19 @@ def get_page_layout(orientacion="portrait", tamano_pagina="A4"):
 
     page_width, page_height = page_size
     margin = 12
-    minimum_card_width = 3.0 * inch
-    preferred_card_width = 4.0 * inch
-    preferred_card_height = 2.0 * inch
-    minimum_card_height = 1.75 * inch
 
-    max_cols = max(1, int((page_width - 2 * margin) // minimum_card_width))
-    row_minimum = minimum_card_height if orientacion in ("landscape", "horizontal") else preferred_card_height
-    max_rows = max(1, int((page_height - 2 * margin) // row_minimum))
+    # Mantener las dimensiones actuales de las tarjetas en cada orientación.
+    if orientacion in ("portrait", "retrato"):
+        card_width = (A4[0] - 2 * margin) / 2
+        card_height = 2.0 * inch
+    else:
+        a4_landscape_width, a4_landscape_height = landscape(A4)
+        card_width = (a4_landscape_width - 2 * margin) / 3
+        card_height = min(2.0 * inch, (a4_landscape_height - 2 * margin) / 4)
 
-    best_layout = None
-    best_capacity = 0
-    for cols in range(1, max_cols + 1):
-        for rows in range(1, max_rows + 1):
-            block_width = min(preferred_card_width, (page_width - 2 * margin) / cols)
-            block_height = min(preferred_card_height, (page_height - 2 * margin) / rows)
-            if block_width < minimum_card_width or block_height < minimum_card_height:
-                continue
-
-            capacity = cols * rows
-            if capacity > best_capacity:
-                best_capacity = capacity
-                best_layout = (cols, rows, block_width, block_height)
-
-    if best_layout is None:
-        return page_size, 1, 1, preferred_card_width, preferred_card_height
-
-    cols, rows, block_width, block_height = best_layout
-    return page_size, cols, rows, block_width, block_height
+    cols = max(1, int((page_width - 2 * margin) // card_width))
+    rows = max(1, int((page_height - 2 * margin) // card_height))
+    return page_size, cols, rows, card_width, card_height
 
 
 def dividir_elementos(elementos, cantidad_archivos):
@@ -382,9 +370,9 @@ def parse_args():
     parser.add_argument(
         "--tamano-pagina", "--page-size",
         dest="tamano_pagina",
-        choices=("A4", "letter"),
+        choices=("A0", "A1", "A2", "A3", "A4", "A5", "A6", "letter"),
         default="A4",
-        help="Tamaño de la hoja: A4 o Letter (predeterminado: A4)."
+        help="Tamaño de la hoja: A0, A1, A2, A3, A4, A5, A6 o Letter (predeterminado: A4)."
     )
     parser.add_argument(
         "--cantidad-archivos", "--file-count",

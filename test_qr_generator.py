@@ -79,6 +79,19 @@ class GenerateExamKitsTests(unittest.TestCase):
         self.assertGreater(portrait_size[1], portrait_size[0])
         self.assertGreater(landscape_size[0], landscape_size[1])
 
+    def test_supported_page_sizes_preserve_card_dimensions(self):
+        reference_width = reference_height = None
+        for page_size in ("A0", "A1", "A2", "A3", "A4", "A5", "A6", "letter"):
+            page, cols, rows, card_width, card_height = qr_generator.get_page_layout("portrait", page_size)
+            self.assertGreater(page[0], 0)
+            self.assertGreater(page[1], 0)
+            self.assertGreaterEqual(cols, 1)
+            self.assertGreaterEqual(rows, 1)
+            if reference_width is None:
+                reference_width, reference_height = card_width, card_height
+            self.assertEqual(card_width, reference_width)
+            self.assertEqual(card_height, reference_height)
+
     def test_blank_card_generation_creates_pdf(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             output_prefix = os.path.join(temp_dir, "blank_kits")

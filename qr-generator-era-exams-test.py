@@ -245,6 +245,7 @@ def generate_exam_kits(usar_csv=True, csv_path="era_nna_exams_2026_consolidado.c
         c.setDash(2, 2)
         c.setLineWidth(0.5)
         c.setStrokeColorRGB(0.6, 0.6, 0.6)
+        c.rect(x, y, card_width, card_height)
         for j in range(1, 5): # Dibuja 4 líneas separadoras verticales
             line_x = x + (j * w_qr)
             c.line(line_x, y, line_x, y + card_height)

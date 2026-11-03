@@ -38,6 +38,16 @@ Portrait uses a dynamically calculated 2-column grid. Landscape adds a column an
 python qr-generator-era-exams-test.py --sin-csv --cantidad 20 --orientacion landscape --tamano-pagina A4 --output-prefix kits_horizontales
 ```
 
+### Distribute cards across multiple PDF files
+
+Use `--cantidad-archivos` to divide the total number of cards evenly among several PDF files. For example, 10 cards divided into 3 files produce groups of 4, 3 and 3 cards.
+
+```powershell
+python qr-generator-era-exams-test.py --sin-csv --cantidad 10 --cantidad-archivos 3 --output-prefix kits_separados
+```
+
+The files are named `kits_separados_1_de_3.pdf`, `kits_separados_2_de_3.pdf`, and `kits_separados_3_de_3.pdf`.
+
 ### Available options
 
 | Option | Description | Default |
@@ -50,6 +60,7 @@ python qr-generator-era-exams-test.py --sin-csv --cantidad 20 --orientacion land
 | `--output-prefix` | PDF output filename without `.pdf` | `kits_desde_csv` |
 | `--orientacion`, `--orientation` | Page orientation: `portrait` or `landscape` | `portrait` |
 | `--tamano-pagina`, `--page-size` | Page format: `A4` or `letter` | `A4` |
+| `--cantidad-archivos`, `--file-count` | Number of PDF files that receive the total cards | `1` |
 
 Show the built-in help at any time:
 

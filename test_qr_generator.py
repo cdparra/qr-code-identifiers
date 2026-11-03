@@ -30,6 +30,8 @@ class LoadStudentsFromCsvTests(unittest.TestCase):
                     "Escuela_Nro": "12",
                     "Grado": "3",
                     "Turno": "mañana",
+                    "Nivel": "Nivel 1",
+                    "Facilitador": "Ana López",
                 },
                 {
                     "ID_NNA": "1",
@@ -58,9 +60,16 @@ class LoadStudentsFromCsvTests(unittest.TestCase):
             self.assertEqual(students[0]["nombre"], "Ana Pérez")
             self.assertEqual(students[0]["sexo"], "F")
             self.assertEqual(students[0]["distrito"], "Centro")
+            self.assertEqual(students[0]["nivel"], "Nivel 1")
+            self.assertEqual(students[0]["facilitador"], "Ana López")
 
 
 class GenerateExamKitsTests(unittest.TestCase):
+    def test_divide_elements_distributes_remainder_across_first_files(self):
+        groups = qr_generator.dividir_elementos(list(range(10)), 3)
+        self.assertEqual([len(group) for group in groups], [4, 3, 3])
+        self.assertEqual(sum(groups, []), list(range(10)))
+
     def test_page_layout_uses_different_grids_by_orientation(self):
         portrait_size, portrait_cols, portrait_rows, _, _ = qr_generator.get_page_layout("portrait")
         landscape_size, landscape_cols, landscape_rows, _, _ = qr_generator.get_page_layout("landscape")
@@ -84,6 +93,28 @@ class GenerateExamKitsTests(unittest.TestCase):
             pdf_path = Path(output_prefix + ".pdf")
             self.assertTrue(pdf_path.is_file())
             self.assertGreater(pdf_path.stat().st_size, 0)
+
+    def test_blank_cards_are_distributed_across_multiple_pdfs(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_prefix = os.path.join(temp_dir, "distributed_kits")
+
+            qr_generator.generate_exam_kits(
+                usar_csv=False,
+                cantidad=10,
+                id_inicial=400000,
+                output_prefix=output_prefix,
+                cantidad_archivos=3,
+            )
+
+            expected_names = [
+                "distributed_kits_1_de_3.pdf",
+                "distributed_kits_2_de_3.pdf",
+                "distributed_kits_3_de_3.pdf",
+            ]
+            for name in expected_names:
+                pdf_path = Path(temp_dir) / name
+                self.assertTrue(pdf_path.is_file())
+                self.assertGreater(pdf_path.stat().st_size, 0)
 
     def test_landscape_blank_card_generation_creates_pdf(self):
         with tempfile.TemporaryDirectory() as temp_dir:

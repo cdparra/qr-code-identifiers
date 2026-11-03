@@ -13,8 +13,8 @@ import os
 
 def load_students_from_csv(csv_path, limit):
     """
-    Función robusta para leer el CSV, manejando posibles problemas de codificación 
-    o encabezados residuales de exportaciones.
+    Función para leer el CSV, gestionando problemas de codificación o encabezados 
+    residuales de exportaciones.
     """
     if not os.path.exists(csv_path):
         print(f"Error: No se encontró el archivo {csv_path}")
@@ -49,7 +49,9 @@ def load_students_from_csv(csv_path, limit):
             "distrito": get_col(row, 'distrito'),
             "escuela": get_col(row, 'escuela_nro'),
             "grado": get_col(row, 'grado'),
-            "turno": get_col(row, 'turno')
+            "turno": get_col(row, 'turno'),
+            "nivel": get_col(row, 'nivel'),
+            "facilitador": get_col(row, 'facilitador')
         })
     return students
 
@@ -102,12 +104,30 @@ def get_page_layout(orientacion="portrait", tamano_pagina="A4"):
     return page_size, cols, rows, block_width, block_height
 
 
+def dividir_elementos(elementos, cantidad_archivos):
+    """Divide una lista en partes equilibradas sin perder ni duplicar elementos."""
+    if cantidad_archivos < 1:
+        raise ValueError("La cantidad de archivos debe ser mayor que cero.")
+
+    base, sobrantes = divmod(len(elementos), cantidad_archivos)
+    grupos = []
+    inicio = 0
+    for indice in range(cantidad_archivos):
+        longitud = base + (1 if indice < sobrantes else 0)
+        grupos.append(elementos[inicio:inicio + longitud])
+        inicio += longitud
+    return grupos
+
+
 def generate_exam_kits(usar_csv=True, csv_path="era_nna_exams_2026_consolidado.csv", cantidad=10,
                        id_inicial=100000, output_prefix="exam_kits", orientacion="portrait",
-                       tamano_pagina="A4"):
+                       tamano_pagina="A4", cantidad_archivos=1, _datos_estudiantes=None):
     
     # 1. Obtener los datos (del CSV o generar vacíos)
-    if usar_csv:
+    if _datos_estudiantes is not None:
+        students = _datos_estudiantes
+        total_students = len(students)
+    elif usar_csv:
         students = load_students_from_csv(csv_path, limit=cantidad)
         total_students = len(students)
         print(f"Cargados {total_students} estudiantes desde el CSV.")
@@ -115,8 +135,31 @@ def generate_exam_kits(usar_csv=True, csv_path="era_nna_exams_2026_consolidado.c
         students = [None] * cantidad # Lista de nulos para generar tarjetas vacías
         total_students = cantidad
         print(f"Generando {total_students} tarjetas vacías.")
-        
+
     if total_students == 0:
+        return
+
+    if cantidad_archivos < 1:
+        raise ValueError("La cantidad de archivos debe ser mayor que cero.")
+
+    if cantidad_archivos > 1 and _datos_estudiantes is None:
+        grupos = dividir_elementos(students, cantidad_archivos)
+        inicio_id = 0
+        for indice, grupo in enumerate(grupos, start=1):
+            if not grupo:
+                continue
+            nombre_parte = f"{output_prefix}_{indice}_de_{cantidad_archivos}"
+            generate_exam_kits(
+                usar_csv=False,
+                cantidad=len(grupo),
+                id_inicial=id_inicial + inicio_id,
+                output_prefix=nombre_parte,
+                orientacion=orientacion,
+                tamano_pagina=tamano_pagina,
+                cantidad_archivos=1,
+                _datos_estudiantes=grupo
+            )
+            inicio_id += len(grupo)
         return
 
     # Configuración de diseño optimizada para cada orientación A4.
@@ -124,13 +167,19 @@ def generate_exam_kits(usar_csv=True, csv_path="era_nna_exams_2026_consolidado.c
     students_per_page = cols * rows
     page_width, page_height = page_size
 
-    # Centrar horizontal y verticalmente el bloque completo en la página A4.
-    margin_x = (page_width - (cols * block_width)) / 2
-    margin_y = (page_height - (rows * block_height)) / 2
+    # Separación uniforme entre tarjetas; los espacios dejan las líneas de corte legibles.
+    card_gap_x = 0.08 * inch
+    card_gap_y = 0.08 * inch
+    card_width = block_width - card_gap_x
+    card_height = block_height - card_gap_y
+
+    # Centrar horizontal y verticalmente todos los bloques, incluyendo los espacios.
+    margin_x = (page_width - (cols * card_width + (cols - 1) * card_gap_x)) / 2
+    margin_y = (page_height - (rows * card_height + (rows - 1) * card_gap_y)) / 2
 
     # Configuración de las 5 secciones de la etiqueta
-    w_qr = block_width * 0.15  # 15% para cada uno de los 4 QRs
-    w_card = block_width * 0.40  # 40% para la tarjeta de identificación
+    w_qr = card_width * 0.15  # 15% para cada uno de los 4 QRs
+    w_card = card_width * 0.40  # 40% para la tarjeta de identificación
     
     qr_configs = [
         ("PRE", "COM", "-PRE-COM"),
@@ -144,7 +193,10 @@ def generate_exam_kits(usar_csv=True, csv_path="era_nna_exams_2026_consolidado.c
         ("Distrito:", "distrito"),
         ("Nro. Esc:", "escuela"),
         ("Grado:", "grado"),
-        ("Turno:", "turno")
+        ("Turno:", "turno"),
+        ("Nivel:", "nivel"),
+        ("Facilitador:", "facilitador")
+
     ]
 
     def make_qr_image(data):
@@ -185,8 +237,8 @@ def generate_exam_kits(usar_csv=True, csv_path="era_nna_exams_2026_consolidado.c
         row = pos_in_page // cols
         
         # Coordenada (x, y) de la esquina inferior izquierda de la tarjeta completa del estudiante
-        x = margin_x + (col * block_width)
-        y = page_height - margin_y - ((row + 1) * block_height)
+        x = margin_x + (col * (card_width + card_gap_x))
+        y = page_height - margin_y - ((row + 1) * (card_height + card_gap_y)) + card_gap_y
         
         # --- LÍNEAS PUNTEADAS DE CORTE ---
         c.saveState()
@@ -195,7 +247,7 @@ def generate_exam_kits(usar_csv=True, csv_path="era_nna_exams_2026_consolidado.c
         c.setStrokeColorRGB(0.6, 0.6, 0.6)
         for j in range(1, 5): # Dibuja 4 líneas separadoras verticales
             line_x = x + (j * w_qr)
-            c.line(line_x, y, line_x, y + block_height)
+            c.line(line_x, y, line_x, y + card_height)
         c.restoreState()
         
         # --- SECCIÓN DE LOS 4 CÓDIGOS QR ---
@@ -204,14 +256,14 @@ def generate_exam_kits(usar_csv=True, csv_path="era_nna_exams_2026_consolidado.c
             
             # Encabezados (Ej. "PRE" y luego "COM")
             c.setFont("NotoSans-Bold", 7)
-            c.drawCentredString(qr_x + w_qr/2, y + block_height - 0.2 * inch, fase)
-            c.drawCentredString(qr_x + w_qr/2, y + block_height - 0.35 * inch, materia)
+            c.drawCentredString(qr_x + w_qr/2, y + card_height - 0.2 * inch, fase)
+            c.drawCentredString(qr_x + w_qr/2, y + card_height - 0.35 * inch, materia)
             
             # Imagen QR
             qr_data = f"EXAM-{student_id}{sufijo}"
             qr_size = 0.45 * inch
             qr_img = make_qr_image(qr_data)
-            c.drawImage(qr_img, qr_x + (w_qr - qr_size)/2, y + (block_height - qr_size)/2, width=qr_size, height=qr_size)
+            c.drawImage(qr_img, qr_x + (w_qr - qr_size)/2, y + (card_height - qr_size)/2, width=qr_size, height=qr_size)
             
             # Pie (Código base y sufijo)
             c.setFont("NotoSans", 5)
@@ -220,7 +272,7 @@ def generate_exam_kits(usar_csv=True, csv_path="era_nna_exams_2026_consolidado.c
 
         # --- SECCIÓN DE LA TARJETA DE IDENTIFICACIÓN ---
         card_x = x + (4 * w_qr)
-        y_offset = y + block_height - 0.25 * inch
+        y_offset = y + card_height - 0.25 * inch
 
         # Nombre: etiqueta arriba y valor en una fila independiente debajo.
         c.setFont("NotoSans-Bold", 7)
@@ -235,8 +287,8 @@ def generate_exam_kits(usar_csv=True, csv_path="era_nna_exams_2026_consolidado.c
             c.setLineWidth(0.5)
             c.line(name_x, name_y - 1, card_x + w_card - 0.05 * inch, name_y - 1)
 
-        y_offset -= 0.38 * inch
-        line_spacing = 0.235 * inch
+        y_offset -= 0.34 * inch
+        line_spacing = 0.205 * inch
 
         for label_text, data_key in fields_to_draw:
             c.setFont("NotoSans-Bold", 7)
@@ -333,10 +385,19 @@ def parse_args():
         default="A4",
         help="Tamaño de la hoja: A4 o Letter (predeterminado: A4)."
     )
+    parser.add_argument(
+        "--cantidad-archivos", "--file-count",
+        dest="cantidad_archivos",
+        type=int,
+        default=1,
+        help="Cantidad de archivos PDF entre los que se distribuyen las tarjetas (predeterminado: 1)."
+    )
 
     args = parser.parse_args()
     if args.cantidad < 1:
         parser.error("--cantidad debe ser mayor que cero")
+    if args.cantidad_archivos < 1:
+        parser.error("--cantidad-archivos debe ser mayor que cero")
     return args
 
 
@@ -350,7 +411,8 @@ if __name__ == "__main__":
             id_inicial=args.id_inicial,
             output_prefix=args.output_prefix,
             orientacion=args.orientacion,
-            tamano_pagina=args.tamano_pagina
+            tamano_pagina=args.tamano_pagina,
+            cantidad_archivos=args.cantidad_archivos
         )
     else:
         script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -367,5 +429,6 @@ if __name__ == "__main__":
             id_inicial=args.id_inicial,
             output_prefix=args.output_prefix,
             orientacion=args.orientacion,
-            tamano_pagina=args.tamano_pagina
+            tamano_pagina=args.tamano_pagina,
+            cantidad_archivos=args.cantidad_archivos
         )

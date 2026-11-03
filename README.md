@@ -40,7 +40,7 @@ python qr-generator-era-exams-test.py --sin-csv --cantidad 20 --orientacion land
 
 ### Distribute cards across multiple PDF files
 
-Use `--cantidad-archivos` to divide the total number of cards evenly among several PDF files. For example, 10 cards divided into 3 files produce groups of 4, 3 and 3 cards.
+When CSV mode is used, duplicate `id_nna` values generate only one card and an ID without data is skipped. If `--cantidad` exceeds the number of available unique IDs, the PDF uses only the rows that exist. Use `--cantidad-archivos` to divide the total number of cards evenly among several PDF files. For example, 10 cards divided into 3 files produce groups of 4, 3 and 3 cards.
 
 ```powershell
 python qr-generator-era-exams-test.py --sin-csv --cantidad 10 --cantidad-archivos 3 --output-prefix kits_separados
@@ -55,7 +55,7 @@ The files are named `kits_separados_1_de_3.pdf`, `kits_separados_2_de_3.pdf`, an
 | `--csv` | Read student data from a CSV | CSV mode |
 | `--sin-csv` | Generate blank cards | Off |
 | `--csv-path` | Path to the CSV file | `era_nna_exams_2026_consolidado.csv` |
-| `--cantidad` | Number of cards or kits | `10` |
+| `--cantidad` | Number of cards or kits; never exceeds the available unique CSV IDs | `10` |
 | `--id-inicial` | First generated ID for blank cards | `100000` |
 | `--output-prefix` | PDF output filename without `.pdf` | `kits_desde_csv` |
 | `--orientacion`, `--orientation` | Page orientation: `portrait` or `landscape` | `portrait` |

@@ -22,12 +22,12 @@ def load_students_from_csv(csv_path, limit):
         
     try:
         # Prefer UTF-8, then support legacy Windows exports commonly encoded as CP1252/Latin-1.
-        df = pd.read_csv(csv_path, sep=',', encoding='utf-8-sig', on_bad_lines='skip')
+        df = pd.read_csv(csv_path, sep=',', encoding='utf-8-sig', on_bad_lines='skip', dtype=str)
     except UnicodeDecodeError:
         try:
-            df = pd.read_csv(csv_path, sep=',', encoding='cp1252', on_bad_lines='skip')
+            df = pd.read_csv(csv_path, sep=',', encoding='cp1252', on_bad_lines='skip', dtype=str)
         except Exception:
-            df = pd.read_csv(csv_path, sep=',', encoding='latin-1', on_bad_lines='skip')
+            df = pd.read_csv(csv_path, sep=',', encoding='latin-1', on_bad_lines='skip', dtype=str)
 
     df.columns = df.columns.str.strip().str.lower()
     
@@ -35,13 +35,22 @@ def load_students_from_csv(csv_path, limit):
         return str(row[col_name]).strip() if col_name in row and pd.notna(row[col_name]) else ""
 
     students = []
-    # Agrupamos por id_nna para asegurar que tomamos una sola tarjeta por estudiante
+    generated_ids = set()
+    effective_limit = max(0, int(limit))
+
+    # Conservamos la primera fila de cada id_nna y mantenemos el orden del CSV.
     if 'id_nna' in df.columns:
-        grouped = df.groupby('id_nna').first().reset_index()
+        grouped = df.drop_duplicates(subset='id_nna', keep='first')
     else:
         grouped = df
 
-    for _, row in grouped.head(limit).iterrows():
+    for _, row in grouped.iterrows():
+        if len(students) >= effective_limit:
+            break
+        student_id = get_col(row, 'id_nna') if 'id_nna' in df.columns else ""
+        if not student_id or student_id in generated_ids:
+            continue
+        generated_ids.add(student_id)
         students.append({
             "id": get_col(row, 'id_nna'),
             "nombre": get_col(row, 'nombre_apellido'),

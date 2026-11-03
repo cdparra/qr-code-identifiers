@@ -64,6 +64,23 @@ class LoadStudentsFromCsvTests(unittest.TestCase):
             self.assertEqual(students[0]["facilitador"], "Ana López")
 
 
+class LoadStudentsLimitTests(unittest.TestCase):
+    def test_limit_greater_than_available_unique_ids_returns_all_available(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            csv_path = Path(temp_dir) / "duplicates.csv"
+            pd.DataFrame([
+                {"ID_NNA": "001", "Nombre_Apellido": "Primero", "Sexo": "F"},
+                {"ID_NNA": "001", "Nombre_Apellido": "Duplicado", "Sexo": "M"},
+                {"ID_NNA": "002", "Nombre_Apellido": "Segundo", "Sexo": "M"},
+                {"ID_NNA": "", "Nombre_Apellido": "Sin ID", "Sexo": "F"},
+            ]).to_csv(csv_path, index=False, encoding="utf-8-sig")
+
+            students = qr_generator.load_students_from_csv(str(csv_path), limit=100)
+
+            self.assertEqual([student["id"] for student in students], ["001", "002"])
+            self.assertEqual(students[0]["nombre"], "Primero")
+
+
 class GenerateExamKitsTests(unittest.TestCase):
     def test_divide_elements_distributes_remainder_across_first_files(self):
         groups = qr_generator.dividir_elementos(list(range(10)), 3)
